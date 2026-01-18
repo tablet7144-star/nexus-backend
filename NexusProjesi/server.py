@@ -5,7 +5,7 @@ import os
 app = Flask(__name__)
 
 # API Anahtarı
-REAL_API_KEY = os.environ.get("AIzaSyDy3Oso7GKMK_DYnadGfI5LkbpL_-ZmX_A")
+REAL_API_KEY = os.environ.get("GOOGLE_API_KEY")
 
 if REAL_API_KEY:
     genai.configure(api_key=REAL_API_KEY)
@@ -79,3 +79,4 @@ def analyze_code():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
