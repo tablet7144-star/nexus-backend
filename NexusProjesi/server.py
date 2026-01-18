@@ -10,33 +10,9 @@ REAL_API_KEY = os.environ.get("GOOGLE_API_KEY")
 if REAL_API_KEY:
     genai.configure(api_key=REAL_API_KEY)
 
-def generate_with_fallback(prompt):
-    """
-    Modelleri sırayla dener. Biri hata verirse diğerine geçer.
-    Böylece asla 404 hatası almazsın.
-    """
-    # Denenecek modeller listesi (En iyiden en garantiye doğru)
-    models_to_try = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]
-    
-    last_error = None
-
-    for model_name in models_to_try:
-        try:
-            print(f"Denenen Model: {model_name}")
-            model = genai.GenerativeModel(model_name)
-            response = model.generate_content(prompt)
-            return response.text
-        except Exception as e:
-            print(f"{model_name} hata verdi: {e}")
-            last_error = e
-            continue # Bir sonraki modele geç
-    
-    # Hiçbiri çalışmazsa hatayı döndür
-    raise last_error
-
 @app.route('/', methods=['GET'])
 def home():
-    return "Nexus Sunucusu Aktif (v2.0 Fix)"
+    return "Nexus Sunucusu (Flash v1.5) Aktif!"
 
 @app.route('/analyze', methods=['POST'])
 def analyze_code():
@@ -48,35 +24,28 @@ def analyze_code():
         user_code = data.get("code", "")
         mode = data.get("mode", "DEBUG")
 
-        # Prompt Hazırlığı
-        base_prompt = f"Sen Nexus AI Sistemisin. Mod: {mode}. Dil: Türkçe."
-        if "DEBUG" in mode: base_prompt += " Hataları düzelt."
-        elif "SECURITY" in mode: base_prompt += " Güvenlik analizi yap."
-        elif "PERFORMANCE" in mode: base_prompt += " Optimize et."
-        elif "AUTO-TEST" in mode: base_prompt += " Unit test yaz."
-        elif "DOCS" in mode: base_prompt += " Dokümantasyon ekle."
+        # --- MODEL SEÇİMİ (EN YENİ VE HIZLI MODEL) ---
+        # Artık döngü yok, direkt hedefi vuruyoruz.
+        model = genai.GenerativeModel("gemini-1.5-flash")
 
-        full_prompt = f"""
-        {base_prompt}
-        FORMAT:
-        ------------------------------------------
-        [DURUM]: (BAŞARILI / RİSKLİ)
-        ------------------------------------------
-        1. ANALİZ
-        2. BULGULAR
-        3. SONUÇ
-        ------------------------------------------
+        # Prompt
+        prompt = f"""
+        Sen Nexus AI Asistanısın.
+        Görev: {mode}
+        Dil: Türkçe
+        
         KOD:
         {user_code}
+        
+        Lütfen detaylı analiz yap ve sonucu düzgün formatta ver.
         """
 
-        # Akıllı fonksiyonu çağır
-        result_text = generate_with_fallback(full_prompt)
-        return jsonify({"result": result_text})
+        response = model.generate_content(prompt)
+        return jsonify({"result": response.text})
 
     except Exception as e:
-        return jsonify({"error": f"Sunucu Hatası: {str(e)}"}), 500
+        # Hatayı gizlemeden direkt gösterelim ki ne olduğunu bilelim
+        return jsonify({"error": f"Google Hatası: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
-
